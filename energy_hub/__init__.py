@@ -1,1 +1,1 @@
-# A hybrid AC/DC micro_grid embedded energy hub is
+# A hybrid AC/DC micro_grid embedded energy hub consists a hybrid AC/DC microgrid grid and the energy router
