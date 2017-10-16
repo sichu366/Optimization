@@ -1,2 +1,2 @@
 # Optimization
-The optimisation  
+The optimisation framwework for the power systems
