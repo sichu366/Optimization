@@ -20,3 +20,8 @@ eff_HVACh = 0.9
 eff_HVACc = 0.9
 
 #The heat, cooling and electrical demand curve
+Electrical_load_profile_AC = [ ]
+Electrical_load_profile_DC = [ ]
+Thermal_load_profile = [ ]
+Heat_load_profile = [ ]
+PV_output_profile = [ ]
