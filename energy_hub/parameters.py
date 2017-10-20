@@ -8,7 +8,7 @@ Emin = 100
 E0 = 50
 
 # The parameter is obtained from
-Pbic_max = 100
+PBIC_max = 100
 eff_bic = 0.95
 
 # The maximal power exchange between the microgrid and utility grid
@@ -20,7 +20,7 @@ eff_HVACh = 0.9
 eff_HVACc = 0.9
 
 #The heat, cooling and electrical demand curve
-Electrical_load_profile_AC = [ ]
+Electrical_load_profile_AC = [100,200,100,150,220,300,400,500,100,]
 Electrical_load_profile_DC = [ ]
 Thermal_load_profile = [ ]
 Heat_load_profile = [ ]
