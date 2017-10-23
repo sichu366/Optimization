@@ -1,6 +1,6 @@
 #The parameters setting for the energy hub.
-T = 24
-
+T = 24 # The first stage decision making
+Tk = 96 # The second stage decision making
 # The parameter is obtained from
 eff_bat = 0.9
 Emax = 10
@@ -16,8 +16,7 @@ Pug_max = 100
 Pug_min = 0
 
 # The efficiency for the HVAC system
-eff_HVACh = 0.9
-eff_HVACc = 0.9
+eff_HVAC = 0.9
 
 #The heat, cooling and electrical demand curve
 Electrical_load_profile_AC = [ ]
