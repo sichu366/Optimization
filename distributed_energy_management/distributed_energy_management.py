@@ -183,6 +183,76 @@ def problem_formulation(*args):
 
     return mathematical_model
 
+# The solving procedure
+def gurobi_solver(c, Aeq=None, beq=None, A=None, b=None, xmin=None, xmax=None, opt=None):
+    from numpy import Inf, ones
+    from gurobipy import *
+    nx = c.shape[0]  # number of decision variables
+    if A != None:
+        nineq = A.shape[0]  # number of equality constraints
+    else:
+        nineq = 0
+
+    if Aeq != None:
+        neq = Aeq.shape[0]  # number of inequality constraints
+    else:
+        neq = 0
+    # Fulfilling the missing informations
+    if beq is None or len(beq) == 0: beq = -Inf * ones(neq)
+    if b is None or len(b) == 0: b = Inf * ones(nineq)
+    if xmin is None or len(xmin) == 0: xmin = -Inf * ones(nx)
+    if xmax is None or len(xmax) == 0: xmax = Inf * ones(nx)
+
+    # modelling based on the high level gurobi api
+    try:
+        gurobi_model = Model("MIP")
+        # Declear the variables
+        x = {}
+        for i in range(nx):
+            x[i] = gurobi_model.addVar(lb=xmin[i], ub=xmax[i], vtype=GRB.CONTINUOUS, name='"x{0}"'.format(i))
+        # Constraints set
+        # Equal constraints
+        if neq != 0:
+            for i in range(neq):
+                expr = 0
+                for j in range(nx):
+                    expr += x[j] * Aeq[i, j]
+                gurobi_model.addConstr(lhs=expr, sense=GRB.EQUAL, rhs=beq[i])
+
+        # Inequal constraints
+        if nineq != 0:
+            for i in range(nineq):
+                expr = 0
+                for j in range(nx):
+                    expr += x[j] * A[i, j]
+                gurobi_model.addConstr(lhs=expr, sense=GRB.LESS_EQUAL, rhs=b[i])
+        # Set the objective function
+        obj = 0
+        for i in range(nx):
+            obj += x[i] * c[i]
+
+        gurobi_model.setObjective(obj)
+
+        gurobi_model.Params.OutputFlag = 0
+        gurobi_model.Params.LogToConsole = 0
+        gurobi_model.Params.DisplayInterval = 1
+        gurobi_model.optimize()
+        xx = []
+        for v in gurobi_model.getVars():
+            # print('%s %g' % (v.varName, v.x))
+            xx.append(v.x)
+
+        obj = obj.getValue()
+        # print('Obj: %g' % obj.getValue())
+
+    except GurobiError as e:
+        print('Error code ' + str(e.errno) + ": " + str(e))
+
+    except AttributeError:
+        print('Encountered an attribute error')
+
+    return xx, obj
+
 if __name__=="main":
     from distributed_energy_management.modelling import generators, loads, energy_storage_systems, convertors, transmission_lines  # Import modellings
 
@@ -200,6 +270,9 @@ if __name__=="main":
                     "V_DC": 0}
 
     model = problem_formulation(local_models, 24)
+    # Solve the problem by using gurobi
+
+
 
 
 
