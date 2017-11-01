@@ -3,8 +3,7 @@
 #1) Transmission lines
 import distributed_energy_management.configuration.configuration_default_lines as default_parameters
 Line = \
-    {s
-        "TYPE":default_parameters.default_Line["TYPE"],
+    {   "TYPE":default_parameters.default_Line["TYPE"],
         "F_BUS":default_parameters.default_Line["F_BUS"],
         "T_BUS":default_parameters.default_Line["T_BUS"],
         "BR_R":default_parameters.default_Line["BR_R"],
