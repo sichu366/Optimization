@@ -168,6 +168,8 @@ def problem_formulation(*args):
         c_list.append(c[i])
 
     C = c_list * T
+    LB = lb_list * T
+    UB = ub_list * T
     # Generate the quadratic parameters
     Q = zeros((nx, nx))
     for i in range(T):
@@ -278,6 +280,15 @@ if __name__ == "__main__":
     model = problem_formulation(local_models, 24)
     # Solve the problem by using gurobi
     c = model["c"]
+    Aeq = model["Aeq"]
+    beq = model["beq"]
+    A = model["A"]
+    b = model["b"]
+    lb = model["lb"]
+    ub = model["ub"]
+
+    xx = gurobi_solver(c,Aeq=Aeq, beq=beq, A=A, b=b, xmin=lb, xmax=ub)
+    print(xx)
 
 
 
