@@ -2,58 +2,50 @@
 
 from numpy import zeros,vstack
 
-def problem_formulation_local_recovery(*args):
+def problem_formulation(*args):
     from distributed_energy_management.configuration import configuration_time_line
     from distributed_energy_management.modelling.power_flow.idx_ed_recovery_format import PG, RG, PUG, RUG, PBIC_AC2DC, PBIC_DC2AC, \
         PESS_C, PESS_DC, RESS, EESS, PMG, PPV, PWP, PL_AC, PL_UAC, PL_DC, PL_UDC, NX
 
     model = args[0]  # If multiple models are inputed, more local ems models will be formulated
     ## The infeasible optimal problem formulation
-    T = configuration_time_line.default_look_ahead_time_step["Look_ahead_time_ed_time_step"]
-    nx = T * NX
-    lb = zeros(nx)
-    ub = zeros(nx)
+    T = args[1]
+    nx = NX * T
+    lb = zeros(NX)
+    ub = zeros(NX)
+    ## Update lower boundary
+    lb[PG] = model["DG"]["PMIN"]
+    lb[RG] = model["DG"]["PMIN"]
 
-    for i in range(T):
-        ## Update lower boundary
-        lb[i * NX + PG] = model["DG"]["PMIN"]
-        lb[i * NX + RG] = model["DG"]["PMIN"]
-        lb[i * NX + PUG] = model["UG"]["PMIN"]
-        lb[i * NX + RUG] = model["UG"]["PMIN"]
-        lb[i * NX + PBIC_AC2DC] = 0
-        lb[i * NX + PBIC_DC2AC] = 0
-        lb[i * NX + PESS_C] = 0
-        lb[i * NX + PESS_DC] = 0
-        lb[i * NX + RESS] = 0
-        lb[i * NX + EESS] = model["ESS"]["SOC_MIN"] * model["ESS"]["CAP"]
-        lb[
-            i * NX + PMG] = 0  # The line flow limitation, the predefined status is, the transmission line is off-line
-        lb[i * NX + PPV] = 0
-        lb[i * NX + PWP] = 0
-        lb[i * NX + PL_AC] = 0
-        lb[i * NX + PL_UAC] = 0
-        lb[i * NX + PL_DC] = 0
-        lb[i * NX + PL_UDC] = 0
-        ## Update lower boundary
-        ub[i * NX + PG] = model["DG"]["PMAX"]
-        ub[i * NX + RG] = model["DG"]["PMAX"]
-        ub[i * NX + PUG] = model["UG"]["PMAX"]
-        ub[i * NX + RUG] = model["UG"]["PMAX"]
-        ub[i * NX + PBIC_AC2DC] = model["BIC"]["CAP"]
-        ub[i * NX + PBIC_DC2AC] = model["BIC"]["CAP"]
-        ub[i * NX + PESS_C] = model["ESS"]["PMAX_CH"]
-        ub[i * NX + PESS_DC] = model["ESS"]["PMAX_DIS"]
-        ub[i * NX + RESS] = model["ESS"]["PMAX_DIS"] + model["ESS"]["PMAX_CH"]
-        ub[i * NX + EESS] = model["ESS"]["SOC_MAX"] * model["ESS"]["CAP"]
-        ub[
-            i * NX + PMG] = 0  # The line flow limitation, the predefined status is, the transmission line is off-line
-        ub[i * NX + PPV] = model["PV"]["PG"][i]
-        ub[i * NX + PWP] = model["WP"]["PG"][i]
-        ub[i * NX + PL_AC] = model["Load_ac"]["PD"][i]
-        ub[i * NX + PL_UAC] = model["Load_uac"]["PD"][i]
-        ub[i * NX + PL_DC] = model["Load_dc"]["PD"][i]
-        ub[i * NX + PL_UDC] = model["Load_udc"]["PD"][i]
+    lb[PUG] = model["UG"]["PMIN"]
+    lb[RUG] = model["UG"]["PMIN"]
 
+    lb[PBIC_AC2DC] = 0
+    lb[PBIC_DC2AC] = 0
+
+    lb[PESS_C] = 0
+    lb[PESS_DC] = 0
+    lb[RESS] = 0
+    lb[EESS] = model["ESS"]["SOC_MIN"] * model["ESS"]["CAP"]
+
+    lb[PMG] = 0  # The line flow limitation, the predefined status is, the transmission line is off-line
+
+    ## Update lower boundary
+    ub[PG] = model["DG"]["PMAX"]
+    ub[RG] = model["DG"]["PMAX"]
+
+    ub[PUG] = model["UG"]["PMAX"]
+    ub[RUG] = model["UG"]["PMAX"]
+
+    ub[PBIC_AC2DC] = model["BIC"]["CAP"]
+    ub[PBIC_DC2AC] = model["BIC"]["CAP"]
+
+    ub[PESS_C] = model["ESS"]["PMAX_CH"]
+    ub[PESS_DC] = model["ESS"]["PMAX_DIS"]
+    ub[RESS] = model["ESS"]["PMAX_DIS"] + model["ESS"]["PMAX_CH"]
+    ub[EESS] = model["ESS"]["SOC_MAX"] * model["ESS"]["CAP"]
+
+    ub[PMG] = 0  # The line flow limitation, the predefined status is, the transmission line is off-line
     ## Constraints set
     # 1) Power balance equation
     Aeq = zeros((T, nx))
@@ -63,9 +55,7 @@ def problem_formulation_local_recovery(*args):
         Aeq[i][i * NX + PUG] = 1
         Aeq[i][i * NX + PBIC_AC2DC] = -1
         Aeq[i][i * NX + PBIC_DC2AC] = model["BIC"]["EFF_DC2AC"]
-        Aeq[i][i * NX + PL_AC] = -1
-        Aeq[i][i * NX + PL_UAC] = -1
-        beq.append(0)
+    beq.append(model["Load_ac"]["PD"] + model["Load_uac"]["PD"])
     # 2) DC power balance equation
     Aeq_temp = zeros((T, nx))
     for i in range(T):
@@ -74,14 +64,11 @@ def problem_formulation_local_recovery(*args):
         Aeq_temp[i][i * NX + PESS_C] = -1
         Aeq_temp[i][i * NX + PESS_DC] = 1
         Aeq_temp[i][i * NX + PMG] = -1
-        Aeq_temp[i][i * NX + PL_DC] = -1
-        Aeq_temp[i][i * NX + PL_UDC] = -1
-        Aeq_temp[i][i * NX + PPV] = 1
-        Aeq_temp[i][i * NX + PWP] = 1
-        beq.append(0)
     Aeq = vstack([Aeq, Aeq_temp])
+    beq.append(model["Load_dc"]["PD"] + model["Load_udc"]["PD"] - model["PV"]["PG"] - model["WP"]["PG"])
 
-    # 3) Energy storage system
+    Aeq = vstack([Aeq, Aeq_temp])
+    beq.append(model["Load_ac"]["QD"] + model["Load_uac"]["QD"])
     # 3) Energy storage system
     Aeq_temp = zeros((T, nx))
     for i in range(T):
@@ -101,8 +88,6 @@ def problem_formulation_local_recovery(*args):
                 "Time_step_ed"] / 3600
             beq.append(0)
     Aeq = vstack([Aeq, Aeq_temp])
-
-    # Inequality constraints
     # Inequality constraints
     # 1) PG + RG <= PGMAX
     Aineq = zeros((T, nx))
@@ -163,7 +148,6 @@ def problem_formulation_local_recovery(*args):
         bineq.append(model["ESS"]["SOC_MAX"] * model["ESS"]["CAP"])
     Aineq = vstack([Aineq, Aineq_temp])
     # 9) RG + RUG + RESS >= sum(Load)*beta + sum(PV)*beta_pv + sum(WP)*beta_wp
-
     # No reserve requirement
     c = zeros(NX)
     if model["DG"]["COST_MODEL"] == 2:
@@ -173,13 +157,6 @@ def problem_formulation_local_recovery(*args):
     c[PUG] = model["UG"]["COST"][0]
     c[PESS_C] = model["ESS"]["COST_CH"][0]
     c[PESS_DC] = model["ESS"]["COST_DIS"][0]
-    # The sheding cost
-    c[PPV] = -model["PV"]["COST"]
-    c[PWP] = -model["WP"]["COST"]
-    c[PL_AC] = -model["Load_ac"]["COST"][0]
-    c[PL_UAC] = -model["Load_uac"]["COST"][0]
-    c[PL_DC] = -model["Load_dc"]["COST"][0]
-    c[PL_UDC] = -model["Load_udc"]["COST"][0]
 
     lb_list = [ ]
     ub_list = [ ]
@@ -205,5 +182,24 @@ def problem_formulation_local_recovery(*args):
                           "ub": ub}
 
     return mathematical_model
+
+if __name__=="main":
+    from distributed_energy_management.modelling import generators, loads, energy_storage_systems, convertors, transmission_lines  # Import modellings
+
+    local_models = {"DG": generators.Generator_AC.copy(),
+                    "UG": generators.Generator_AC.copy(),
+                    "Load_ac": loads.Load_AC.copy(),
+                    "Load_uac": loads.Load_AC.copy(),
+                    "BIC": convertors.BIC.copy(),
+                    "ESS": energy_storage_systems.BESS.copy(),
+                    "PV": generators.Generator_RES.copy(),
+                    "WP": generators.Generator_RES.copy(),
+                    "Load_dc": loads.Load_DC.copy(),
+                    "Load_udc": loads.Load_DC.copy(),
+                    "PMG": 0,
+                    "V_DC": 0}
+
+    model = problem_formulation(local_models, 24)
+
 
 
