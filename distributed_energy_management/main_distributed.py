@@ -50,7 +50,7 @@ def problem_formulation(*args):
     ## Constraints set
     # 1) Power balance equation
     Aeq = zeros((T, nx))
-    beq = []
+    beq = [ ]
     for i in range(T):
         Aeq[i][i * NX + PG] = 1
         Aeq[i][i * NX + PUG] = 1
@@ -65,11 +65,9 @@ def problem_formulation(*args):
         Aeq_temp[i][i * NX + PESS_C] = -1
         Aeq_temp[i][i * NX + PESS_DC] = 1
         Aeq_temp[i][i * NX + PMG] = -1
+        beq.append(model["Load_dc"]["PD"] + model["Load_udc"]["PD"] - model["PV"]["PG"] - model["WP"]["PG"])
     Aeq = vstack([Aeq, Aeq_temp])
-    beq.append(model["Load_dc"]["PD"] + model["Load_udc"]["PD"] - model["PV"]["PG"] - model["WP"]["PG"])
 
-    Aeq = vstack([Aeq, Aeq_temp])
-    beq.append(model["Load_ac"]["QD"] + model["Load_uac"]["QD"])
     # 3) Energy storage system
     Aeq_temp = zeros((T, nx))
     for i in range(T):
@@ -288,8 +286,12 @@ if __name__ == "__main__":
     lb = asarray(model["lb"])
     ub = asarray(model["ub"])
 
-    xx = gurobi_solver(c, Aeq=Aeq, beq=beq, A=A, b=b, xmin=lb, xmax=ub)
-    print(xx)
+    (xx,obj) = gurobi_solver(c, Aeq=Aeq, beq=beq, A=A, b=b, xmin=lb, xmax=ub)
+    obj_real = 0
+    for i in range(c.shape[0]):
+        obj_real += c[i]*xx[i]
+
+    print(obj_real-obj)
 
 
 
