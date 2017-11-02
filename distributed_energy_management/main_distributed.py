@@ -1,6 +1,6 @@
 # The distributed energy management system
 
-from numpy import zeros,vstack
+from numpy import zeros,vstack,asarray
 from gurobipy import *
 
 def problem_formulation(*args):
@@ -56,7 +56,7 @@ def problem_formulation(*args):
         Aeq[i][i * NX + PUG] = 1
         Aeq[i][i * NX + PBIC_AC2DC] = -1
         Aeq[i][i * NX + PBIC_DC2AC] = model["BIC"]["EFF_DC2AC"]
-    beq.append(model["Load_ac"]["PD"] + model["Load_uac"]["PD"])
+        beq.append(model["Load_ac"]["PD"] + model["Load_uac"]["PD"])# Add the
     # 2) DC power balance equation
     Aeq_temp = zeros((T, nx))
     for i in range(T):
@@ -181,8 +181,8 @@ def problem_formulation(*args):
                           "beq": beq,
                           "A": Aineq,
                           "b": bineq,
-                          "lb": lb,
-                          "ub": ub}
+                          "lb": LB,
+                          "ub": UB}
 
     return mathematical_model
 
@@ -191,12 +191,13 @@ def gurobi_solver(c, Aeq=None, beq=None, A=None, b=None, xmin=None, xmax=None, o
     from numpy import Inf, ones
 
     nx = c.shape[0]  # number of decision variables
-    if A != None:
+
+    if A.any() != None:
         nineq = A.shape[0]  # number of equality constraints
     else:
         nineq = 0
 
-    if Aeq != None:
+    if Aeq.any() != None:
         neq = Aeq.shape[0]  # number of inequality constraints
     else:
         neq = 0
@@ -279,15 +280,15 @@ if __name__ == "__main__":
 
     model = problem_formulation(local_models, 24)
     # Solve the problem by using gurobi
-    c = model["c"]
+    c = asarray(model["c"])
     Aeq = model["Aeq"]
     beq = model["beq"]
     A = model["A"]
     b = model["b"]
-    lb = model["lb"]
-    ub = model["ub"]
+    lb = asarray(model["lb"])
+    ub = asarray(model["ub"])
 
-    xx = gurobi_solver(c,Aeq=Aeq, beq=beq, A=A, b=b, xmin=lb, xmax=ub)
+    xx = gurobi_solver(c, Aeq=Aeq, beq=beq, A=A, b=b, xmin=lb, xmax=ub)
     print(xx)
 
 
