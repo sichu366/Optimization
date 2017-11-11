@@ -311,12 +311,12 @@ def miqp_gurobi(c, Q, Aeq=None, beq=None, A=None, b=None, xmin=None, xmax=None, 
                        - C{message} - exit message
         """
     nx = c.shape[0]  # number of decision variables
-    if A != None:
+    if A.shape[0]:
         nineq = A.shape[0]  # number of equality constraints
     else:
         nineq = 0
 
-    if Aeq != None:
+    if Aeq.shape[0]:
         neq = Aeq.shape[0]  # number of inequality constraints
     else:
         neq = 0
@@ -332,7 +332,9 @@ def miqp_gurobi(c, Q, Aeq=None, beq=None, A=None, b=None, xmin=None, xmax=None, 
         # Declear the variables
         x = {}
         for i in range(nx):
-            if vtypes[i] == "b" or vtypes[i] == "B":
+            if vtypes == None:
+                x[i] = gurobi_model.addVar(lb=xmin[i], ub=xmax[i], vtype=GRB.CONTINUOUS, name='"x{0}"'.format(i))
+            elif vtypes[i] == "b" or vtypes[i] == "B":
                 x[i] = gurobi_model.addVar(lb=xmin[i], ub=xmax[i], vtype=GRB.BINARY, name='"x{0}"'.format(i))
             elif vtypes[i] == "d" or vtypes[i] == "D":
                 x[i] = gurobi_model.addVar(lb=xmin[i], ub=xmax[i], vtype=GRB.INTEGER, name='"x{0}"'.format(i))
