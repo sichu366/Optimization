@@ -12,6 +12,9 @@ from pypower.idx_bus import BUS_TYPE, REF, VA, VM, PD, GS, VMAX, VMIN
 from pypower.idx_gen import GEN_BUS, VG, PG, QG, PMAX, PMIN, QMAX, QMIN
 
 from scipy.sparse import csr_matrix as sparse
+
+from Two_stage_stochastic_optimization.solvers.mix_integer_solvers import miqp_gurobi# The gurobi solver
+
 def optimal_power_flow(*args):
     casedata = args[0] # Target power flow modelling
     mpc = loadcase(casedata) # Import the power flow modelling
@@ -49,6 +52,8 @@ def optimal_power_flow(*args):
     Cg = sparse((ones(ng), (gen[:, GEN_BUS], arange(ng))), (nb, ng)) # Sparse index generation method is different from the way of matlab
 
     Pd = sum(bus[:,PD])# Total power demand
+
+    # Formulate the problem
 
 
     return mpc

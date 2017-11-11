@@ -183,6 +183,11 @@ def problem_formulation(*args):
                           "ub": UB}
 
     return mathematical_model
+# The master problem formulation
+def global_problem_formulation(*args):
+    model = args[0] # The transmission line parameters
+    T = args[1] # The
+
 
 # The solving procedure
 def gurobi_solver(c, Aeq=None, beq=None, A=None, b=None, xmin=None, xmax=None, opt=None):
@@ -239,7 +244,7 @@ def gurobi_solver(c, Aeq=None, beq=None, A=None, b=None, xmin=None, xmax=None, o
         gurobi_model.Params.LogToConsole = 0
         gurobi_model.Params.DisplayInterval = 1
         gurobi_model.optimize()
-        xx = []
+        xx = [ ]
         for v in gurobi_model.getVars():
             # print('%s %g' % (v.varName, v.x))
             xx.append(v.x)
