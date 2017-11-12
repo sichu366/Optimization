@@ -66,14 +66,15 @@ def optimal_power_flow(*args):
 
     bineq = concatenate((branch[:, RATE_A] + Distribution_factor * Cd * bus[:, PD], branch[:, RATE_A] - Distribution_factor * Cd * bus[:, PD]))
     c = gencost[:,5]
-    Q = diag(gencost[:, 4])
+    Q = 2*diag(gencost[:, 4])
     (Pg,obj) = miqp_gurobi(c = c,Q = Q,Aeq = Aeq, beq=beq, A=Aineq, b=bineq, xmin = lb,xmax = ub)
     obj =  obj + sum(gencost[:,6])
     return Pg, obj
 
 if __name__=="__main__":
     # This algorithm has been tested on the ieee test cases
-    from pypower.case24_ieee_rts import case24_ieee_rts
-    casedata = case24_ieee_rts()
-    result = optimal_power_flow(casedata)
-    print(result)
+    from pypower.case30 import case30
+    casedata = case30()
+    (result,obj) = optimal_power_flow(casedata)
+    print(obj)
+    # The results show that the power flow limitations have been actived.
