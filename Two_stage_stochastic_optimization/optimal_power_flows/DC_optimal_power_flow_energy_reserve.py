@@ -5,7 +5,7 @@ from pypower.ext2int import ext2int
 from numpy import zeros, c_, shape, ix_,ones,r_,arange,sum,diag,concatenate
 from numpy import flatnonzero as find
 from scipy.sparse.linalg import inv
-from scipy.sparse import vstack
+from scipy.sparse import vstack,hstack
 
 from pypower.idx_brch import F_BUS, T_BUS, BR_X, TAP, SHIFT, BR_STATUS,RATE_A
 from pypower.idx_cost import MODEL, NCOST, PW_LINEAR, COST, POLYNOMIAL
@@ -16,8 +16,9 @@ from scipy.sparse import csr_matrix as sparse
 
 from Two_stage_stochastic_optimization.solvers.mix_integer_solvers import miqp_gurobi# The gurobi solver
 
-def optimal_power_flow(*args):
+def optimal_power_flow_energy_reserve(*args):
     casedata = args[0] # Target power flow modelling
+    beta = args[1] # The reserve level
     mpc = loadcase(casedata) # Import the power flow modelling
     ## convert to internal indexing
     mpc = ext2int(mpc)
@@ -56,24 +57,29 @@ def optimal_power_flow(*args):
     Pd = sum(bus[:,PD]) # Total power demand
 
     # Formulate the problem
-    lb = gen[:,PMIN]
-    ub = gen[:,PMAX]
-    Aeq = sparse(ones(ng))
+    lb = concatenate((gen[:,PMIN],zeros(ng))) # extend the
+    ub = concatenate((gen[:,PMAX],gen[:,PMAX]))
+    Aeq = sparse(concatenate((ones(ng),zeros(ng))))
     beq = [Pd]
 
-    Aineq = Distribution_factor * Cg
+    Aineq = sparse(hstack([Distribution_factor * Cg,zeros((nl,ng))]))
     Aineq = vstack([Aineq, -Aineq])
-
+    # The ramp reserve requirement
+    Aineq = vstack([Aineq, sparse((r_[ones(ng), ones(ng)], (r_[arange(ng), arange(ng)], r_[arange(ng), ng+arange(ng)])), (ng, 2*ng))])
+    Aineq = vstack([Aineq, sparse((r_[-ones(ng), ones(ng)], (r_[arange(ng), arange(ng)], r_[arange(ng), ng+arange(ng)])), (ng, 2*ng))])
     bineq = concatenate((branch[:, RATE_A] + Distribution_factor * Cd * bus[:, PD], branch[:, RATE_A] - Distribution_factor * Cd * bus[:, PD]))
-    c = gencost[:,5]
-    Q = diag(gencost[:, 4])
+    bineq = concatenate((bineq, gen[:, PMAX]))
+    bineq = concatenate((bineq, -gen[:, PMIN]))
+    c = concatenate((gencost[:,5],zeros(ng)))
+    Q = diag(concatenate((gencost[:,4],zeros(ng))))
     (Pg,obj) = miqp_gurobi(c = c,Q = Q,Aeq = Aeq, beq=beq, A=Aineq, b=bineq, xmin = lb,xmax = ub)
     obj =  obj + sum(gencost[:,6])
     return Pg, obj
 
 if __name__=="__main__":
     # This algorithm has been tested on the ieee test cases
-    from pypower.case24_ieee_rts import case24_ieee_rts
-    casedata = case24_ieee_rts()
-    result = optimal_power_flow(casedata)
+    from pypower.case30 import case30
+    casedata = case30()
+    beta = 0.03
+    result = optimal_power_flow_energy_reserve(casedata,beta)
     print(result)
