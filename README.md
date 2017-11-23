@@ -1,7 +1,7 @@
 # Optimization (modelling and algorithm development)
 Two parts of work are presented in the optimization package.
 
-1)Modelling
+1) Modelling
 a) Optimal power flow.
 b) Economic dispatch.
 c) Unit commitment.
@@ -19,3 +19,4 @@ c) Benders decomposition
 d) Generalized Benders decomposition
 f) ADMM
 
+Two commercial software packages are required for the deployment of this package, 1) Gurobi and 2) Mosek.
