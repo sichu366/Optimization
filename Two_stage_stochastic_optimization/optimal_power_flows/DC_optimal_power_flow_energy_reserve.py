@@ -72,7 +72,7 @@ def optimal_power_flow_energy_reserve(*args):
     bineq = concatenate((bineq, -gen[:, PMIN]))
     c = concatenate((gencost[:,5],zeros(ng)))
     Q = diag(concatenate((gencost[:,4],zeros(ng))))
-    (Pg,obj) = miqp_gurobi(c = c,Q = Q,Aeq = Aeq, beq=beq, A=Aineq, b=bineq, xmin = lb,xmax = ub)
+    (Pg,obj) = miqp_gurobi(c = c,Q = Q, Aeq = Aeq, beq = beq, A = Aineq, b = bineq, xmin = lb,xmax = ub)
     obj =  obj + sum(gencost[:,6])
     return Pg, obj
 
