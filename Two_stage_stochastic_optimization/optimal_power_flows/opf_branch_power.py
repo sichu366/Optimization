@@ -4,6 +4,7 @@ Optimal power flow based on branch power flow modelling
 
 Additional case33 is added to the test cases
 
+Note: The proposed method has been verified
 """
 
 from Two_stage_stochastic_optimization.power_flow_modelling import case33
@@ -61,22 +62,14 @@ def run(mpc):
     Vm_u = turn_to_power(bus[:, VMAX], 2)
     Pg_u = 2 * gen[:, PMAX] / baseMVA
     Qg_u = 2 * gen[:, QMAX] / baseMVA
-
+    lx = concatenate([Pij_l,Qij_l,Iij_l,Vm_l,Pg_l,Qg_l])
+    ux = concatenate([Pij_u, Qij_u, Iij_u, Vm_u, Pg_u, Qg_u])
     model = Model("OPF")
     # Define the decision variables
     x = {}
-
-    for i in range(nl):
-        x[i] = model.addVar(lb=Pij_l[i], ub=Pij_u[i], vtype=GRB.CONTINUOUS, name='"Pij{0}"'.format(i))
-        x[i + nl] = model.addVar(lb=Qij_l[i], ub=Qij_u[i], vtype=GRB.CONTINUOUS, name='"Qij{0}"'.format(i))
-        x[i + 2 * nl] = model.addVar(lb=Iij_l[i], ub=Iij_u[i], vtype=GRB.CONTINUOUS, name='"Iij{0}"'.format(i))
-
-    for i in range(nb):
-        x[i + 3 * nl] = model.addVar(lb=Vm_l[i], ub=Vm_u[i], vtype=GRB.CONTINUOUS, name='"V{0}"'.format(i))
-
-    for i in range(ng):
-        x[i + 3 * nl + nb] = model.addVar(lb=Pg_l[i], ub=Pg_u[i], vtype=GRB.CONTINUOUS, name='"Pg{0}"'.format(i))
-        x[i + 3 * nl + nb + ng] = model.addVar(lb=Qg_l[i], ub=Qg_u[i], vtype=GRB.CONTINUOUS, name='"Qg{0}"'.format(i))
+    nx = 3 * nl + nb + 2 * ng
+    for i in range(nx):
+        x[i] = model.addVar(lb=lx[i], ub=ux[i], vtype=GRB.CONTINUOUS)
 
     # Add system level constraints
     Aeq_p = hstack([Ct - Cf, zeros((nb, nl)), -diag(Ct * Branch_R) * Ct, zeros((nb, nb)), Cg, zeros((nb, ng))])
@@ -93,7 +86,7 @@ def run(mpc):
     Aeq = Aeq.todense()
     beq = concatenate([beq_p, beq_q, beq_KVL])
     neq = len(beq)
-    nx = 3 * nl + nb + 2 * ng
+
 
     for i in range(neq):
         expr = 0
@@ -101,8 +94,8 @@ def run(mpc):
             expr += x[j] * Aeq[i, j]
         model.addConstr(lhs=expr, sense=GRB.EQUAL, rhs=beq[i])
 
-    # for i in range(nl):
-    #   model.addConstr(x[i]*x[i] + x[i+nl]*x[i+nl] <= x[i+2*nl]*x[f[i]+3*nl], name='"rc{0}"'.format(i))
+    for i in range(nl):
+      model.addConstr(x[i]*x[i] + x[i+nl]*x[i+nl] <= x[i+2*nl]*x[f[i]+3*nl], name='"rc{0}"'.format(i))
 
     obj = 0
     for i in range(ng):
@@ -128,16 +121,26 @@ def run(mpc):
     Pg = xx[3 * nl + nb:3 * nl + nb + ng]
     Qg = xx[3 * nl + nb + ng:3 * nl + nb + 2 * ng]
 
-    return xx, obj
+    primal_residual = []
 
+    for i in range(nl):
+        primal_residual.append(Pij[i]*Pij[i] + Qij[i]*Qij[i] - Iij[i]*Vi[int(f[i])])
+
+
+    return xx, obj, primal_residual
 
 def turn_to_power(list, power=1):
     return [number ** power for number in list]
 
-
 if __name__ == "__main__":
+
+    from pypower import runopf
     mpc = case33.case33()  # Default test case
+    (xx, obj,residual) = run(mpc)
 
-    (xx, obj) = run(mpc)
+    result = runopf.runopf(case33.case33())
 
-    print(xx)
+    gap = 100*(result["f"]-obj)/obj
+
+    print(gap)
+    print(max(residual))
